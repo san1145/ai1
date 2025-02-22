@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        /* 聊天容器样式 */
+        .chat-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+        
+        /* 聊天历史区域 */
+        #chatHistory {
+            height: 500px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #eee;
+        }
+        
+        /* 消息气泡样式 */
+        .message {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 20px;
+            max-width: min(720px, 80%);
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        
+        /* 用户消息样式 */
+        .user-message {
+            background-color: #0084ff;
+            color: white;
+            margin-left: auto;
+            flex-direction: row-reverse;
+        }
+        
+        /* AI消息样式 */
+        .ai-message {
+            background-color: #f0f0f0;
+            margin-right: auto;
+        }
+        
+        /* 头像样式 */
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        /* 用户头像 */
+        .user-avatar {
+            background: #fff url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="%230084ff" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>') center/55% no-repeat;
+        }
+        
+        /* AI头像 */
+        .ai-avatar {
+            background: #0084ff url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>') center/60% no-repeat;
+        }
+        
+        /* 消息内容样式 */
+        .message-content {
+            padding: 16px 20px;
+            line-height: 1.6;
+            word-break: break-word;
+            font-size: 1rem;
+            border-radius: 12px;
+        }
+        
+        /* 输入区域 */
+        .input-area {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background: #fff;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+        
+        #userInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* 清除按钮样式 */
+        .clear-btn {
+            background-color: #f44336 !important;
+            margin-left: 10px;
+        }
+        
+        .clear-btn:hover {
+            background-color: #d32f2f !important;
+        }
+        
+        /* 系统消息样式 */
+        .system-message {
+            background-color: #fff3e0;
+            margin: 10px auto;
+            text-align: center;
+            max-width: 50%;
+            font-size: 0.9em;
+        }
+
+        /* 思考中动画 */
+        .thinking {
+            position: relative;
+            padding-left: 15px;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .thinking::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            border-top-color: #2196F3;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: translateY(-50%) rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* 禁用状态样式 */
+        #userInput:disabled {
+            background: #f5f5f5;
+            cursor: not-allowed;
+        }
+        
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* 加载动画样式 */
+        .dot-flashing {
+            position: relative;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            animation: dotFlashing 1s infinite linear;
+            flex-shrink: 0;
+        }
+        
+        .dot-flashing::before,
+        .dot-flashing::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: #4CAF50;
+        }
+        
+        .dot-flashing::before {
+            left: -15px;
+            animation: dotFlashing 1s infinite linear;
+            animation-delay: 0s;
+        }
+        
+        .dot-flashing::after {
+            left: 15px;
+            animation: dotFlashing 1s infinite linear;
+            animation-delay: 0.2s;
+        }
+        
+        @keyframes dotFlashing {
+            0% { background-color: #4CAF50; }
+            50%, 100% { background-color: rgba(76, 175, 80, 0.2); }
+        }
+
+        /* 添加代码块样式 */
+        .ai-message pre {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        /* 输入框样式优化 */
+        #userInput {
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 6px;
+            padding: 12px 16px;
+            font-size: 16px;
+        }
+
+        /* 按钮悬停动画 */
+        button {
+            transition: all 0.2s ease;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .message {
+                max-width: 90%;
+                margin: 14px auto;
+            }
+            
+            .avatar {
+                width: 32px;
+                height: 32px;
+            }
+            
+            .message-content {
+                font-size: 0.95rem;
+                padding: 14px 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .message {
+                max-width: 94%;
+                margin: 12px auto;
+            }
+            
+            .avatar {
+                width: 28px;
+                height: 28px;
+            }
+            
+            .message-content {
+                font-size: 0.9rem;
+                padding: 12px 16px;
+            }
+            
+            /* 输入区域优化 */
+            .input-area {
+                padding: 10px;
+            }
+            
+            #userInput {
+                padding: 12px;
+                font-size: 0.9rem;
+            }
+            
+            button {
+                padding: 10px 14px;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* 精确尺寸控制 */
+        .user-message .message-content {
+            max-width: 85%;
+        }
+        
+        .ai-message .message-content {
+            max-width: 90%;
+        }
+
+        /* 模型选择器增强样式 */
+        .model-selector {
+            padding: 15px;
+            background: linear-gradient(145deg, #f8f9fa, #ffffff);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        #modelSelect {
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        #modelSelect:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        /* 模型提示样式 */
+        #modelHint {
+            font-size: 0.9em;
+            color: #64748b;
+            margin-top: 8px;
+            padding: 6px;
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+
+        /* 图片消息样式 */
+        .image-message img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        /* 图像消息样式增强 */
+        .image-container {
+            position: relative;
+            margin: 10px 0;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .prompt-info {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 8px;
+            padding: 6px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .loading-dots {
+            display: inline-block;
+        }
+        .loading-dots:after {
+            content: ' .';
+            animation: dots 1.4s infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ' .'; }
+            40% { content: ' ..'; }
+            60% { content: ' ...'; }
+            80%, 100% { content: ' '; }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <!-- 模型选择器 -->
+        <div class="model-selector">
+            <select id="modelSelect" onchange="updateModelHint()">
+                <option value="gpt-4o-mini">🚀 GPT-4 Mini (快速版)</option>
+                <option value="gpt-3.5-turbo">⚡ GPT-3.5 Turbo (基础版)</option>
+                <option value="gpt-3.5-turbo-0125">🔍 GPT-3.5 Turbo 0125</option>
+                <option value="dall-e-2">🎨 DALL·E 2 图像生成</option>
+            </select>
+            <div id="modelHint"></div>
+        </div>
+        
+        <div id="chatHistory"></div>
+        
+        <!-- 输入区域 -->
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="输入消息...">
+            <button onclick="sendMessage()">发送</button>
+            <button onclick="clearChat()" class="clear-btn">清除</button>
+        </div>
+    </div>
+
+    <script>
+        // 替换成你的OpenAI API密钥
+        const API_KEY = 'sk-FM0n1f844zyYOovJ26C3E691B3C544E589FeB7E1B8Ec8a88';
+        const API_URL = 'https://free.v36.cm/v1/chat/completions';
+
+        // 添加请求间隔
+        let lastRequestTime = 0;
+
+        // 全局上下文存储
+        let chatContext = []; // 添加全局变量声明
+        
+        // 初始化时加载历史记录
+        window.addEventListener('load', () => {
+            const saved = localStorage.getItem('chatContext');
+            if(saved) {
+                chatContext = JSON.parse(saved);
+                chatContext.forEach(msg => {
+                    if(msg.role !== 'system') {
+                        addMessage(msg.content, msg.role);
+                    }
+                });
+            }
+        });
+
+        function manageContext() {
+            // 限制最大历史记录数
+            const MAX_HISTORY = 20; // 最多保存20条消息
+            
+            if(chatContext.length > MAX_HISTORY) {
+                // 保留最近的10对对话（20条消息）
+                chatContext = chatContext.slice(-MAX_HISTORY);
+            }
+            
+            // 同时保存到本地存储
+            localStorage.setItem('chatContext', JSON.stringify(chatContext));
+        }
+
+        // 更新后的模型配置
+        const MODEL_CONFIG = {
+            'gpt-4o-mini': {
+                name: 'GPT-4 Mini',
+                maxTokens: 4096,
+                temperature: 0.7,
+                type: 'text',
+                systemPrompt: "你是由OpenAI开发的GPT-4 Mini模型，作为最先进的AI助手，你能够：\n" +
+                              "1. 提供准确简洁的回答\n" +
+                              "2. 自动优化复杂问题的结构\n" +
+                              "3. 支持多步骤推理\n" +
+                              "4. 严格遵循事实和逻辑"
+            },
+            'gpt-3.5-turbo': {
+                name: 'GPT-3.5 Turbo',
+                maxTokens: 4096,
+                temperature: 0.7,
+                type: 'text',
+                systemPrompt: "你是OpenAI的GPT-3.5 Turbo模型，擅长快速响应和日常对话"
+            },
+            'gpt-3.5-turbo-0125': {
+                name: 'GPT-3.5 Turbo 0125',
+                maxTokens: 4096,
+                temperature: 0.7,
+                type: 'text'
+            },
+            'dall-e-2': {
+                name: 'DALL·E 2 暂时不能使用',
+                type: 'image',
+                systemPrompt: "专业图像生成模型，将中文描述转化为英文提示词",
+                examplePrompts: [
+                    "一只戴着眼镜的柯基犬在图书馆看书",
+                    "赛博朋克风格的未来城市夜景",
+                    "梵高风格的星空下的向日葵田"
+                ]
+            }
+        };
+
+        // 清理后的提示更新函数
+        function updateModelHint() {
+            const model = document.getElementById('modelSelect').value;
+            const hintText = {
+                'gpt-4o-mini': '快速响应版本，适合简单对话',
+                'gpt-3.5-turbo': '通用版本，平衡速度与质量',
+                'gpt-3.5-turbo-0125': '2024年1月优化版本',
+                'dall-e-2': '输入英文描述生成图像'
+            }[model];
+            document.getElementById('modelHint').textContent = hintText;
+        }
+
+        // 初始化模型提示
+        updateModelHint();
+
+        // 图像生成函数
+        async function generateImage(prompt) {
+            const response = await fetch('https://api.openai.com/v1/images/generations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${API_KEY}`
+                },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    n: 1,
+                    size: "512x512",
+                    response_format: "url",
+                    model: "dall-e-2"
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`图像生成失败: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.data[0].url;
+        }
+
+        // 增强性能配置
+        const PERFORMANCE_CONFIG = {
+            timeout: 15000, // 15秒超时
+            retries: 2,     // 最多重试2次
+            contextWindow: 4 // 保留最近2轮对话
+        };
+
+        // 优化API请求函数
+        async function makeAPIRequest(options) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), PERFORMANCE_CONFIG.timeout);
+
+            try {
+                const response = await fetch(API_URL, {
+                    ...options,
+                    signal: controller.signal,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    }
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                return response.json();
+                
+            } catch (error) {
+                if (PERFORMANCE_CONFIG.retries > 0) {
+                    PERFORMANCE_CONFIG.retries--;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    return makeAPIRequest(options);
+                }
+                throw error;
+            }
+        }
+
+        // 优化消息处理流程
+        async function sendMessage() {
+            const model = document.getElementById('modelSelect').value;
+            const userInput = document.getElementById('userInput').value.trim();
+            if (!userInput) return;
+
+            try {
+                // 立即清空输入框
+                document.getElementById('userInput').value = '';
+                addMessage(userInput, 'user');
+                
+                // 轻量级加载提示
+                const thinkingMsg = addMessage('<div class="loading-dots"></div>', 'thinking');
+
+                const responseData = await makeAPIRequest({
+                    method: 'POST',
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [
+                            {
+                                role: "system",
+                                content: MODEL_CONFIG[model]?.systemPrompt || "你是有帮助的助手"
+                            },
+                            ...chatContext.slice(-PERFORMANCE_CONFIG.contextWindow * 2),
+                            { role: "user", content: userInput }
+                        ],
+                        temperature: MODEL_CONFIG[model]?.temperature || 0.7,
+                        max_tokens: MODEL_CONFIG[model]?.maxTokens || 800
+                    })
+                });
+
+                const aiResponse = responseData.choices[0].message.content;
+                thinkingMsg.remove();
+                addMessage(aiResponse, 'ai');
+
+                // 优化上下文管理
+                chatContext = [
+                    ...chatContext.slice(-PERFORMANCE_CONFIG.contextWindow * 2),
+                    { role: "user", content: userInput },
+                    { role: "assistant", content: aiResponse }
+                ];
+                manageContext();
+
+            } catch (error) {
+                addMessage(`响应超时，请简化问题后重试`, 'error');
+            }
+        }
+
+        function addMessage(content, role) {
+            const chatHistory = document.getElementById('chatHistory');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}-message`;
+            
+            // 添加头像（AI和用户消息）
+            if (role === 'ai' || role === 'user') {
+                const avatar = document.createElement('div');
+                avatar.className = `avatar ${role}-avatar`;
+                messageDiv.appendChild(avatar);
+            }
+
+            // 创建消息内容
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            // 特殊处理加载状态
+            if (role === 'thinking') {
+                contentDiv.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="dot-flashing"></div>
+                        <span style="color: #6b7280">思考中...</span>
+                    </div>
+                `;
+            }
+
+            messageDiv.appendChild(contentDiv);
+            chatHistory.appendChild(messageDiv);
+            
+            // 平滑滚动
+            chatHistory.scrollTo({
+                top: chatHistory.scrollHeight,
+                behavior: 'smooth'
+            });
+            
+            return messageDiv;
+        }
+
+        // 回车键发送消息
+        document.getElementById('userInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // 备选方案1：使用JSONP回退
+        const jsonpFallback = (message) => {
+            const script = document.createElement('script');
+            script.src = `${API_URL}?callback=handleResponse&q=${encodeURIComponent(message)}`;
+            document.body.appendChild(script);
+        }
+
+        window.handleResponse = (data) => {
+            // 处理响应数据
+        }
+
+        // 备选方案2：使用代理服务器
+        // const PROXY_URL = 'https://your-proxy.com/api';
+        // 将API_URL替换为PROXY_URL
+
+        // 清除对话功能
+        function clearChat() {
+            if(confirm('确定要清除所有对话历史吗？')) {
+                chatContext = [];
+                localStorage.removeItem('chatContext');
+                document.getElementById('chatHistory').innerHTML = '';
+                addMessage('对话已重置', 'system');
+            }
+        }
+
+        // 添加动画效果
+        document.getElementById('chatHistory').style.transition = 'opacity 0.3s';
+        document.getElementById('chatHistory').style.opacity = 0;
+        setTimeout(() => {
+            document.getElementById('chatHistory').innerHTML = '';
+            document.getElementById('chatHistory').style.opacity = 1;
+        }, 300);
+
+        document.addEventListener('DOMContentLoaded', function() {
+            let lastTouch = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = Date.now();
+                if (now - lastTouch <= 300) {
+                    event.preventDefault();
+                }
+                lastTouch = now;
+            }, false);
+        });
+    </script>
+</body>
+</html> 
